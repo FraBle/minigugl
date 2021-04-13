@@ -1,0 +1,20 @@
+language: python
+dist: focal
+python:
+  - "3.6"
+  - "3.7"
+before_install:
+  - pip install pipupgrade
+  - pipupgrade --verbose --latest --yes
+  - pip install git+https://github.com/python-poetry/poetry.git
+install:
+  # Necessary since piwheels only provides packages for ARM and poetry locks them
+  - rm -rf poetry.lock
+  - head -n -3 pyproject.toml > pyproject.toml.new && cp pyproject.toml.new pyproject.toml
+  - poetry install --dev-only
+script:
+  - poetry run safety check
+  - poetry run bandit -r ./minigugl
+  - poetry run dodgy
+  - poetry run flake8
+  - poetry run mypy ./minigugl

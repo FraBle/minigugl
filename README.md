@@ -1,1 +1,1 @@
-# gugelhupf-stream-client
+# minigugl
