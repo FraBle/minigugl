@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     output_dir: str
     enable_gps: bool = False
     gps_interval_sec: Union[float, int] = 0.1
+    annotation_padding: int = 5
+    annotation_margin: int = 5
+    annotation_font_height: int = 15
 
     class Config(object):  # noqa: WPS431
         """Enable support to load settings from .env files."""

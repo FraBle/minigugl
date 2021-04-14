@@ -1,21 +1,19 @@
 """Video stream client for Raspberry Pi-powered dash cam."""
-import io
 import signal
 import sys
-import time
 from pathlib import Path
-from threading import Thread
+from typing import Any, Optional
 
 import arrow
 import cv2
 from loguru import logger
 from vidgear.gears import VideoGear, WriteGear
 
-from minigugl import config
+from minigugl import annotation, config
 from minigugl.log import setup_logging
 
 if config.settings.enable_gps:
-    import gps  # noqa: WPS433
+    from minigugl import location  # noqa: WPS433
 
 setup_logging(
     log_level=config.settings.log_level,
@@ -31,7 +29,6 @@ stream = VideoGear(
     source=config.settings.video_source,
     stabilize=True,
     logging=True,
-    # colorspace='COLOR_BGR2RGB',
     **opencv_options,
 ).start()
 
@@ -48,6 +45,8 @@ ffmpeg_options = {
         # force key frame every x seconds
         config.settings.video_segment_length_sec,
     ),
+    # use `-clones` for `-f` parameter since WriteGear internally applies
+    # critical '-f rawvideo' parameter to every FFmpeg pipeline
     '-clones': ['-f', 'segment'],  # enable segment muxer
     '-preset': 'fast',  # preset option (encoding speed to compression ratio)
     '-tune': 'zerolatency',  # fast encoding and low-latency streaming
@@ -70,19 +69,12 @@ writer = WriteGear(
     **ffmpeg_options,
 )
 
-# Font setup for OpenCV
-ft = cv2.freetype.createFreeType2()
-font_file = Path(__file__).parent / 'fonts' / 'SourceCodePro-Regular.ttf'
-ft.loadFontData(
-    fontFileName=str(font_file),
-    id=0,
-)
 
-
-def _signal_handler(signalnum: int, frame):
+def _signal_handler(signalnum: int, frame: 'frame'):
     """Handle signal from user interruption (e.g. CTRL+C).
-    Logs and error message and exits with non-zero exit code.
-    Args are ignored.
+
+    Logs an error message and exits with non-zero exit code. Args are ignored.
+
     Args:
         signalnum: Recevied signal number.
         frame: Current stack frame.
@@ -99,108 +91,58 @@ signal.signal(signal.SIGINT, _signal_handler)
 signal.signal(signal.SIGTERM, _signal_handler)
 
 
-def _update_gps(gpsd: 'gps.gps', geo_coordinates: io.StringIO):
-    """Update geo coordinates with gps data from gpsd.
+def _add_text_annotations(
+    img: Any,
+    top_left: Optional[str] = None,
+    top_right: Optional[str] = None,
+    bottom_left: Optional[str] = None,
+    bottom_right: Optional[str] = None,
+):
+    if not any([top_left, top_right, bottom_left, bottom_right]):
+        return img
 
-    https://gpsd.gitlab.io/gpsd/gpsd_json.html#_tpv
-
-    Args:
-        gpsd: An instance of the GPS daemon interface.
-        geo_coordinates: A StringIO buffer object.
-    """
-    while True:  # noqa: WPS457
-        gps_data = next(gpsd)
-        if gps_data.get('class') == 'TPV':
-            latitude = getattr(gps_data, 'lat', 'N/A')
-            longitude = getattr(gps_data, 'lon', 'N/A')
-            if latitude and longitude:
-                geo_coordinates.seek(0)
-                geo_coordinates.write(
-                    '{0}° | {1}°'.format(latitude, longitude),
-                )
-        time.sleep(config.settings.gps_interval_sec)
-
-
-def _add_timestamp(img):
-    font_height = 20
-    thickness = -1
-    text = arrow.now().format(arrow.FORMAT_RFC2822)
-    (text_width, text_height) = ft.getTextSize(
-        text,
-        font_height,
-        thickness,
-    )[0]
-    margin = 5
-    padding = 5
-    text_offset_x = 0 + padding + margin
-    text_offset_y = img.shape[0] - padding - margin
-    box_coords = (
-        (
-            text_offset_x - padding,
-            text_offset_y + padding,
-        ),
-        (
-            text_offset_x + text_width + padding,
-            text_offset_y - text_height - padding,
-        ),
-    )
+    alpha = 0.7  # opacity level
     overlay = img.copy()  # to allow opacity
 
-    # Add background
-    cv2.rectangle(
-        overlay,
-        box_coords[0],
-        box_coords[1],
-        (255, 255, 255),  # white background
-        cv2.FILLED,
-    )
-
-    ft.putText(
-        img=overlay,
-        text=text,
-        org=(text_offset_x, text_offset_y),
-        fontHeight=font_height,
-        color=(0, 0, 0),  # black text
-        thickness=-1,
-        line_type=cv2.LINE_AA,
-        bottomLeftOrigin=True,
-    )
-
-    alpha = 0.7
+    if top_left:
+        annotation.add_annotation_top_left(overlay, top_left)
+    if top_right:
+        annotation.add_annotation_top_right(overlay, top_right)
+    if bottom_left:
+        annotation.add_annotation_bottom_left(overlay, bottom_left)
+    if bottom_right:
+        annotation.add_annotation_bottom_right(overlay, bottom_right)
 
     return cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
 
 
 if __name__ == '__main__':
     if config.settings.enable_gps:
-        # WATCH_ENABLE   # enable streaming
-        # WATCH_NEWSTYLE # force JSON streaming
-        gpsd = gps.gps(mode=gps.WATCH_ENABLE | gps.WATCH_NEWSTYLE)
-        geo_coordinates = io.StringIO('N/A')
-        gps_thread = Thread(
-            target=_update_gps,
-            args=(gpsd, geo_coordinates),
-            daemon=True,
-        )
-        gps_thread.start()
+        gps_coordinates = location.start_gps_thread()
 
     while True:
-        # if config.settings.enable_gps:
-
-        # read frames from stream
-        frame = stream.read()
+        frame = stream.read()  # read frames from stream
 
         # check for frame if None-type
         if frame is None:
             break
 
-        if config.settings.enable_gps:
-            logger.info('GPS: {0}', geo_coordinates.getvalue())
-
-        # explicit conversion because of
+        # explicit conversion of color space because of
         # https://github.com/opencv/opencv/issues/18120
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = _add_timestamp(img)
+
+        # add text annotations: timestamp and optionally GPS coordinates
+        img = _add_text_annotations(
+            img,
+            bottom_left=arrow.now().format(arrow.FORMAT_RFC2822),
+            bottom_right=(
+                str(gps_coordinates)
+                if config.settings.enable_gps
+                else None
+            ),
+        )
+
+        # conversion back to original color space
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
         writer.write(img)
