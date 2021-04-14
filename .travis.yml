@@ -1,14 +1,14 @@
 language: python
 dist: focal
 python:
-  - "3.6"
-  - "3.7"
+  - 3.6
+  - 3.7
 before_install:
   - pip install pipupgrade
   - pipupgrade --verbose --latest --yes
-  - pip install git+https://github.com/python-poetry/poetry.git
+  - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
 install:
-  - poetry install --dev-only
+  - poetry install
 script:
   - poetry run safety check
   - poetry run bandit -r ./minigugl

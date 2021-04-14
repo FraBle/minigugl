@@ -70,7 +70,7 @@ writer = WriteGear(
 )
 
 
-def _signal_handler(signalnum: int, frame: 'frame'):
+def _signal_handler(signalnum: int, frame):
     """Handle signal from user interruption (e.g. CTRL+C).
 
     Logs an error message and exits with non-zero exit code. Args are ignored.
