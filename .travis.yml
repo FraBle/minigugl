@@ -8,9 +8,6 @@ before_install:
   - pipupgrade --verbose --latest --yes
   - pip install git+https://github.com/python-poetry/poetry.git
 install:
-  # Necessary since piwheels only provides packages for ARM and poetry locks them
-  - rm -rf poetry.lock
-  - head -n -3 pyproject.toml > pyproject.toml.new && cp pyproject.toml.new pyproject.toml
   - poetry install --dev-only
 script:
   - poetry run safety check
