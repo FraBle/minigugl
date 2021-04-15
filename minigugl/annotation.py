@@ -212,7 +212,7 @@ def add_text(
     text: str,
     text_org: TextOrg,
     box_coords: BoxCoords,
-):
+) -> None:
     """Draw text with background on an frame.
 
     Args:
@@ -244,7 +244,7 @@ def add_text(
 def add_annotation_bottom_left(
     frame: Any,
     text: str,
-):
+) -> None:
     """Add text annotation to frame on bottom left.
 
     Args:
@@ -269,7 +269,7 @@ def add_annotation_bottom_left(
 def add_annotation_bottom_right(
     frame: Any,
     text: str,
-):
+) -> None:
     """Add text annotation to frame on bottom right.
 
     Args:
@@ -294,7 +294,7 @@ def add_annotation_bottom_right(
 def add_annotation_top_left(
     frame: Any,
     text: str,
-):
+) -> None:
     """Add text annotation to frame on top left.
 
     Args:
@@ -319,7 +319,7 @@ def add_annotation_top_left(
 def add_annotation_top_right(
     frame: Any,
     text: str,
-):
+) -> None:
     """Add text annotation to frame on top right.
 
     Args:

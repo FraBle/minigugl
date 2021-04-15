@@ -16,13 +16,13 @@ class GpsCoordinates(object):
         lon: GPS longitude.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize latitude, longitude, and internal lock."""
         self._lock = Lock()
         self.lat: float = 0
         self.lon: float = 0
 
-    def update(self, lat, lon):
+    def update(self, lat: float, lon: float) -> None:
         """Thread-safe update of latitude & longitude.
 
         Args:
@@ -53,7 +53,7 @@ class GpsCoordinates(object):
         return '{0:>13} {1:>13}'.format(lat_deg, lon_deg)
 
 
-def _update_gps(gpsd: 'gps.gps', gps_coordinates: GpsCoordinates):
+def _update_gps(gpsd: 'gps.gps', gps_coordinates: GpsCoordinates) -> None:
     """Update geo coordinates with gps data from gpsd.
 
     https://gpsd.gitlab.io/gpsd/gpsd_json.html#_tpv

@@ -70,14 +70,13 @@ writer = WriteGear(
 )
 
 
-def _signal_handler(signalnum: int, frame):
+def _signal_handler(signalnum: int, _: Any) -> None:
     """Handle signal from user interruption (e.g. CTRL+C).
 
     Logs an error message and exits with non-zero exit code. Args are ignored.
 
     Args:
         signalnum: Recevied signal number.
-        frame: Current stack frame.
     """
     logger.info('Received signal: {0}', signal.Signals(signalnum).name)
     # safely close video stream & writer
@@ -97,7 +96,7 @@ def _add_text_annotations(
     top_right: Optional[str] = None,
     bottom_left: Optional[str] = None,
     bottom_right: Optional[str] = None,
-):
+) -> Any:
     if not any([top_left, top_right, bottom_left, bottom_right]):
         return img
 

@@ -32,7 +32,7 @@ class InterceptHandler(logging.Handler):
         0: 'NOTSET',
     }
 
-    def emit(self, record: logging.LogRecord):
+    def emit(self, record: logging.LogRecord) -> None:
         """Pass log record to loguru.
 
         Args:
@@ -65,19 +65,19 @@ def _format_record(
 ) -> str:
     """Format loguru log record according to specified format.
 
-    Args:
-        record: A loguru.Record instance to get formatted.
-        log_format: A str with the desired log format.
-
-    Returns:
-        A str representing the formatted log entry.
-
     Uses pprint.pformat() to log any additional data passed in as extra
     payload. Example:
     >>> payload = [{"users":[{"name": "Nick", "age": 87}], "count": 1}]
     >>> logger.bind(payload=payload).debug("users payload")
     >>> [   {   'count': 1,
     >>>         'users': [   {'age': 87, 'name': 'Nick'}]}]
+
+    Args:
+        record: A loguru.Record instance to get formatted.
+        log_format: A str with the desired log format.
+
+    Returns:
+        A str representing the formatted log entry.
     """
     format_string = log_format
     if record.get('extra', {}).get('payload'):
@@ -91,18 +91,19 @@ def _format_record(
     return format_string
 
 
-def setup_logging(log_level: str, log_format: str = LOGURU_FORMAT):
+def setup_logging(log_level: str, log_format: str = LOGURU_FORMAT) -> None:
     """Set up loguru to be the sole logging mechanism.
-
-    Args:
-        log_level: A str to set the desired log level.
-        log_format: A str for custom log format. Defaults to loguru default.
 
     Register a custom InterceptHandler based on loguru as sole handler for the
     root logger. Further, remove all registered logger handlers and set
     corresponding loggers to propogate up the the root logger now handled by
     loguru. A custom dict can be passed as payload to the log for debugging
     purposes.
+
+    Args:
+        log_level: A str to set the desired log level.
+        log_format: A str for custom log format. Defaults to loguru default.
+
     """
     # Intercept everything at the root logger
     logging.root.handlers = [InterceptHandler()]
