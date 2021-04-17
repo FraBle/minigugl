@@ -8,6 +8,9 @@ before_install:
   - pipupgrade --verbose --latest --yes
   - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
 install:
+  # Necessary since piwheels only provides packages for ARM and poetry locks them
+  - rm -rf poetry.lock
+  - head -n -3 pyproject.toml > pyproject.toml.new && cp pyproject.toml.new pyproject.toml
   - poetry install
   - npm install -g snyk
 script: poetry build
