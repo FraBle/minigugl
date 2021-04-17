@@ -1,9 +1,9 @@
 """Integration with gpsd through separate thread."""
+import math
 from threading import Lock, Thread
 from time import sleep
 
 import gps
-from LatLon3.LatLon import LatLon
 
 from minigugl import config
 
@@ -43,14 +43,41 @@ class GpsCoordinates(object):
             DMS-converted GPS coordinates.
         """
         self._lock.acquire()
-        latlon = LatLon(self.lat, self.lon)
-        self._lock.release()
-        lat_deg, lon_deg = latlon.to_string(
-            'd%°%m%\'%S%"%H',
-            n_digits_seconds=1,
+        dms = '{0} {1}'.format(
+            deg_to_dms(self.lat, unit='lat'),
+            deg_to_dms(self.lon, unit='lon'),
         )
-        # Fill up string to 13 characters for lat/lon to maintain same length
-        return '{0:>13} {1:>13}'.format(lat_deg, lon_deg)
+        self._lock.release()
+        return dms
+
+
+def deg_to_dms(deg: float, unit: str) -> str:  # noqa: WPS210
+    """Convert decimal degrees to DMS.
+
+    Based on https://stackoverflow.com/a/52371976
+    DMS = degrees, minutes, and seconds
+
+    Args:
+        deg: Degree in decimal
+        unit: Coordinates unit ('lat' or 'lon')
+
+    Returns:
+        DMS-converted GPS coordinates as string.
+    """
+    decimals, number = math.modf(deg)
+    degrees = int(number)
+    minutes = int(decimals * 60)
+    seconds = (deg - degrees - minutes / 60) * 60 * 60
+    compass = {
+        'lat': ('N', 'S'),
+        'lon': ('E', 'W'),
+    }
+    return '{0}°{1:02}\'{2:04.1f}"{3}'.format(
+        abs(degrees),
+        abs(minutes),
+        abs(seconds),
+        compass[unit][0 if degrees >= 0 else 1],
+    )
 
 
 def _update_gps(gpsd: 'gps.gps', gps_coordinates: GpsCoordinates) -> None:
