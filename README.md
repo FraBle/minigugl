@@ -67,6 +67,123 @@ poetry run python -m minigugl.client
 
 ## Additional Resources
 
+### Setting up Real Time Streaming Protocol (RTSP) server on a Raspberry Pi as video source
+
+> Based on
+>
+> - [https://github.com/mpromonet/v4l2rtspserver/wiki/Setup-on-Pi](https://github.com/mpromonet/v4l2rtspserver/wiki/Setup-on-Pi)
+> - [https://gist.github.com/brutella/a71e8d7aa90af2c53ab500c4125bc178](https://gist.github.com/brutella/a71e8d7aa90af2c53ab500c4125bc178)
+
+1. Install `v4l2rtspserver`
+
+    ```bash
+    sudo apt install -y cmake liblog4cpp5-dev libv4l-dev
+    cd /tmp
+    git clone https://github.com/mpromonet/v4l2rtspserver.git
+    cd v4l2rtspserver/
+    cmake .
+    make
+    sudo make install
+    ```
+
+2. Install `v4l-utils` for debugging & control commands
+
+    ```bash
+    sudo apt install v4l-utils
+    ```
+
+    Example "rotatation of camera":
+
+    ```bash
+    v4l2-ctl --set-ctrl=rotate=90
+    ```
+
+3. (For full automation) Add `v4l2-ctl` command to system by boot via `udev` subsystem
+
+    `sudo nano /etc/udev/rules.d/99-local-webcam.rules`:
+
+    ```plain
+    SUBSYSTEM=="video4linux", PROGRAM="/usr/bin/v4l2-ctl --set-ctrl=rotate=90"
+    ```
+
+4. Load open source V4L2 driver `bcm2835-v4l2`
+
+    ```bash
+    sudo modprobe -v bcm2835-v4l2 max_video_width=640 max_video_height=480
+    ```
+
+5. Add `bcm2835-v4l2` to `/etc/modules` (kernel modules to load at boot time)
+
+    ```bash
+    sudo nano /etc/modules
+    # Add "bcm2835-v4l2 max_video_width=640 max_video_height=480" to the end of the file
+    ```
+
+6. Test the setup by starting `v4l2rtspserver` with open source V4L2 driver `bcm2835-v4l2`
+
+    > [Parameters for `bcm2835-v4l2`](https://github.com/torvalds/linux/blob/master/drivers/staging/vc04_services/bcm2835-camera/bcm2835-camera.c)
+
+    ```bash
+    v4l2rtspserver -W640 -H480 -F30 -P8555 /dev/video0
+    ```
+
+7. Testing H264 RTSP video stream, e.g. with VLC from a MacBook
+
+    ```bash
+    vlc rtsp://<rpi-ip>:8555/unicast
+    ```
+
+8. (For full automation) Add `v4l2rtspserver` start-up script
+
+    Create start-up script: `sudo nano /usr/local/bin/start-rtsp-server`
+
+    ```bash
+    #!/bin/bash
+    v4l2rtspserver -W640 -H480 -F30 -P8555 /dev/video0
+    ```
+
+    Add execution rights with `sudo chmod +x /usr/local/bin/start-rtsp-server`.
+
+9. (For full automation) Add `v4l2rtspserver` to systemd
+
+    Create systemd entry: `sudo nano /lib/systemd/system/v4l2rtspserver.service`
+
+    ```ini
+    [Unit]
+    Description=V4L2 RTSP server
+    After=network.target
+
+    [Service]
+    Type=simple
+    ExecStart=/usr/local/bin/start-rtsp-server
+    Restart=always
+    RestartSec=1
+    StartLimitIntervalSec=0
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+    Enable `v4l2rtspserver.service`
+
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable v4l2rtspserver.service
+    sudo systemctl start v4l2rtspserver.service
+    ```
+
+10. (For full automation) Reboot Raspberry Pi and confirm everything starts automatically
+
+    ```bash
+    sudo reboot
+    ```
+
+    Open H264 RTSP video stream, e.g. with VLC from a MacBook:
+
+    ```bash
+    vlc rtsp://<rpi-ip>:8555/unicast
+    ```
+
 ### Starting `gpsd` on Raspberry Pi for Globalsat BU-353S4
 
 1. Install `gpsd` packages
