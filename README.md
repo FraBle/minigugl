@@ -61,9 +61,55 @@ The following parameters can be passed in as environment variables. Alternativel
 
 With all required environment variables set, execute the following code inside the repo directory to start the video streaming client:
 
-```
+```bash
 poetry run python -m minigugl.client
 ```
+
+## Additional Resources
+
+### Starting `gpsd` on Raspberry Pi for Globalsat BU-353S4
+
+1. Install `gpsd` packages
+
+    ```bash
+    apt install gpsd gpsd-clients
+    ```
+
+2. Edit gpsd config (setting `DEVICES`, `GPSD_OPTIONS`, and `GPSD_SOCKET`)
+
+    ```bash
+    nano /etc/default/gpsd
+    ```
+
+    `/etc/default/gpsd` for reference:
+
+    ```plain
+    # Default settings for the gpsd init script and the hotplug wrapper.
+
+    # Start the gpsd daemon automatically at boot time
+    START_DAEMON="true"
+
+    # Use USB hotplugging to add new USB devices automatically to the daemon
+    USBAUTO="true"
+
+    # Devices gpsd should collect to at boot time.
+    # They need to be read/writeable, either by user gpsd or the group dialout.
+    DEVICES="/dev/ttyUSB0"
+
+    # Other options you want to pass to gpsd
+    # "-n: Don't wait for a client to connect before polling whatever GPS is associated with it."
+    GPSD_OPTIONS="-n"
+    GPSD_SOCKET="/var/run/gpsd.sock"
+    ```
+
+3. Enable the gpsd service
+
+    ```bash
+    systemctl enable gpsd.socket
+    systemctl start gpsd.socket
+    ```
+
+4. Verify GPS connection by running `gpsmon` and/or `cgps`
 
 <!--
 Badges
