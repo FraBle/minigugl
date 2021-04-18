@@ -1,5 +1,5 @@
 """Settings management using pydantic."""
-from typing import Union
+from typing import Optional, Union
 
 from pydantic import BaseSettings
 
@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     annotation_padding: int = 5
     annotation_margin: int = 5
     annotation_font_height: int = 15
+    annotation_override_text_height: Optional[int]
 
     class Config(object):  # noqa: WPS431
         """Enable support to load settings from .env files."""

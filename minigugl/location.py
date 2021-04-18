@@ -2,10 +2,18 @@
 import math
 from threading import Lock, Thread
 from time import sleep
+from types import MappingProxyType
 
 import gps
 
 from minigugl import config
+
+LATITUDE = 'lat'
+LONGITUDE = 'lon'
+COMPASS = MappingProxyType({
+    LATITUDE: ('N', 'S'),
+    LONGITUDE: ('E', 'W'),
+})
 
 
 class GpsCoordinates(object):
@@ -44,8 +52,8 @@ class GpsCoordinates(object):
         """
         self._lock.acquire()
         dms = '{0} {1}'.format(
-            deg_to_dms(self.lat, unit='lat'),
-            deg_to_dms(self.lon, unit='lon'),
+            deg_to_dms(self.lat, unit=LATITUDE),
+            deg_to_dms(self.lon, unit=LONGITUDE),
         )
         self._lock.release()
         return dms
@@ -68,15 +76,12 @@ def deg_to_dms(deg: float, unit: str) -> str:  # noqa: WPS210
     degrees = int(number)
     minutes = int(decimals * 60)
     seconds = (deg - degrees - minutes / 60) * 60 * 60
-    compass = {
-        'lat': ('N', 'S'),
-        'lon': ('E', 'W'),
-    }
+
     return '{0}°{1:02}\'{2:04.1f}"{3}'.format(
-        abs(degrees),
+        str(abs(degrees)).zfill(2 if unit == LATITUDE else 3),
         abs(minutes),
         abs(seconds),
-        compass[unit][0 if degrees >= 0 else 1],
+        COMPASS[unit][0 if degrees >= 0 else 1],
     )
 
 
@@ -92,10 +97,11 @@ def _update_gps(gpsd: 'gps.gps', gps_coordinates: GpsCoordinates) -> None:
     while True:  # noqa: WPS457
         gps_data = next(gpsd)
         if gps_data.get('class') == 'TPV':
-            gps_coordinates.update(
-                gps_data.get('lat'),
-                gps_data.get('lon'),
-            )
+            if gps_data.get(LATITUDE) and gps_data.get(LONGITUDE):
+                gps_coordinates.update(
+                    gps_data.get(LATITUDE),
+                    gps_data.get(LONGITUDE),
+                )
         sleep(config.settings.gps_interval_sec)
 
 

@@ -1,6 +1,6 @@
 """Annotations for video frames."""
 from pathlib import Path
-from typing import Any, NamedTuple, Tuple
+from typing import Any, NamedTuple, Optional, Tuple
 
 import cv2
 
@@ -27,20 +27,28 @@ ft.loadFontData(
 )
 
 
-def get_text_size(text: str) -> Tuple[int, int]:
+def get_text_size(
+    text: str,
+    override_text_height: Optional[int] = None,
+) -> Tuple[int, int]:
     """Calculate text width and height based on font height.
 
     Args:
         text: Input text as string.
+        override_text_height: Override text height in case OpenCV's
+            getTextSize() acts buggy.
 
     Returns:
         Tuple representing text width and text height as integers.
     """
-    return ft.getTextSize(
+    text_width, text_height = ft.getTextSize(
         text,
         config.settings.annotation_font_height,
         thickness=-1,
     )[0]
+    if override_text_height:
+        return text_width, override_text_height
+    return text_width, text_height
 
 
 def get_bottom_left_coords(
@@ -244,14 +252,20 @@ def add_text(
 def add_annotation_bottom_left(
     frame: Any,
     text: str,
+    override_text_height: Optional[int] = None,
 ) -> None:
     """Add text annotation to frame on bottom left.
 
     Args:
         frame: Input frame as OpenCV image.
         text: Text to be drawn as string.
+        override_text_height: Override text height in case OpenCV's
+            getTextSize() acts buggy.
     """
-    (text_width, text_height) = get_text_size(text=text)
+    (text_width, text_height) = get_text_size(
+        text=text,
+        override_text_height=override_text_height,
+    )
     text_org, box_coords = get_bottom_left_coords(
         text_width=text_width,
         text_height=text_height,
@@ -269,14 +283,20 @@ def add_annotation_bottom_left(
 def add_annotation_bottom_right(
     frame: Any,
     text: str,
+    override_text_height: Optional[int] = None,
 ) -> None:
     """Add text annotation to frame on bottom right.
 
     Args:
         frame: Input frame as OpenCV image.
         text: Text to be drawn as string.
+        override_text_height: Override text height in case OpenCV's
+            getTextSize() acts buggy.
     """
-    (text_width, text_height) = get_text_size(text=text)
+    (text_width, text_height) = get_text_size(
+        text=text,
+        override_text_height=override_text_height,
+    )
     text_org, box_coords = get_bottom_right_coords(
         text_width=text_width,
         text_height=text_height,
@@ -294,14 +314,20 @@ def add_annotation_bottom_right(
 def add_annotation_top_left(
     frame: Any,
     text: str,
+    override_text_height: Optional[int] = None,
 ) -> None:
     """Add text annotation to frame on top left.
 
     Args:
         frame: Input frame as OpenCV image.
         text: Text to be drawn as string.
+        override_text_height: Override text height in case OpenCV's
+            getTextSize() acts buggy.
     """
-    (text_width, text_height) = get_text_size(text=text)
+    (text_width, text_height) = get_text_size(
+        text=text,
+        override_text_height=override_text_height,
+    )
     text_org, box_coords = get_top_left_coords(
         text_width=text_width,
         text_height=text_height,
@@ -319,14 +345,20 @@ def add_annotation_top_left(
 def add_annotation_top_right(
     frame: Any,
     text: str,
+    override_text_height: Optional[int] = None,
 ) -> None:
     """Add text annotation to frame on top right.
 
     Args:
         frame: Input frame as OpenCV image.
         text: Text to be drawn as string.
+        override_text_height: Override text height in case OpenCV's
+            getTextSize() acts buggy.
     """
-    (text_width, text_height) = get_text_size(text=text)
+    (text_width, text_height) = get_text_size(
+        text=text,
+        override_text_height=override_text_height,
+    )
     text_org, box_coords = get_top_right_coords(
         text_width=text_width,
         text_height=text_height,

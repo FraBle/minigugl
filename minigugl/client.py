@@ -27,8 +27,6 @@ opencv_options = {
 }
 stream = VideoGear(
     source=config.settings.video_source,
-    stabilize=True,
-    logging=True,
     **opencv_options,
 ).start()
 
@@ -102,15 +100,32 @@ def _add_text_annotations(
 
     alpha = 0.7  # opacity level
     overlay = img.copy()  # to allow opacity
+    override_text_height = config.settings.annotation_override_text_height
 
     if top_left:
-        annotation.add_annotation_top_left(overlay, top_left)
+        annotation.add_annotation_top_left(
+            frame=overlay,
+            text=top_left,
+            override_text_height=override_text_height,
+        )
     if top_right:
-        annotation.add_annotation_top_right(overlay, top_right)
+        annotation.add_annotation_top_right(
+            overlay,
+            top_right,
+            override_text_height=override_text_height,
+        )
     if bottom_left:
-        annotation.add_annotation_bottom_left(overlay, bottom_left)
+        annotation.add_annotation_bottom_left(
+            overlay,
+            bottom_left,
+            override_text_height=override_text_height,
+        )
     if bottom_right:
-        annotation.add_annotation_bottom_right(overlay, bottom_right)
+        annotation.add_annotation_bottom_right(
+            overlay,
+            bottom_right,
+            override_text_height=override_text_height,
+        )
 
     return cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
 
