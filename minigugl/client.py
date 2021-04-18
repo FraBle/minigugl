@@ -2,6 +2,8 @@
 import signal
 import sys
 from pathlib import Path
+from queue import Queue
+from threading import Event, Thread
 from typing import Any, Optional
 
 import arrow
@@ -54,6 +56,7 @@ ffmpeg_options = {
     '-reset_timestamps': 1,  # reset timestamps at beginning of each segment
     '-strftime': 1,  # expand the segment filename with localtime
 }
+# Ensure output folder exists
 Path(config.settings.output_dir).mkdir(parents=True, exist_ok=True)
 writer = WriteGear(
     # Example: video_2021-04-14_20-15-30.mp4
@@ -67,6 +70,10 @@ writer = WriteGear(
     **ffmpeg_options,
 )
 
+# Queue to coordinate frame read/writes using threads
+frame_queue: 'Queue[Any]' = Queue()
+stop_event = Event()
+
 
 def _signal_handler(signalnum: int, _: Any) -> None:
     """Handle signal from user interruption (e.g. CTRL+C).
@@ -78,8 +85,7 @@ def _signal_handler(signalnum: int, _: Any) -> None:
     """
     logger.info('Received signal: {0}', signal.Signals(signalnum).name)
     # safely close video stream & writer
-    stream.stop()
-    writer.close()
+    stop_event.set()
     sys.exit(0)
 
 
@@ -130,33 +136,77 @@ def _add_text_annotations(
     return cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
 
 
-if __name__ == '__main__':
-    if config.settings.enable_gps:
-        gps_coordinates = location.start_gps_thread()
+def start_video_output_thread(event: Event) -> None:
+    """Start thread to read frames from Queue and write out via WriteGear.
 
-    while True:
+    Args:
+        event: Event to signal the thread loop to stop.
+    """
+    logger.info('Start of video output thread')
+
+    while not event.is_set():  # noqa: WPS457
+        if not frame_queue.empty():
+            frame = frame_queue.get()
+
+            # explicit conversion of color space because of
+            # https://github.com/opencv/opencv/issues/18120
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # add text annotations: timestamp and optionally GPS coordinates
+            frame = _add_text_annotations(
+                frame,
+                bottom_left=arrow.now().format(arrow.FORMAT_RFC2822),
+                bottom_right=(
+                    str(gps_coordinates)
+                    if config.settings.enable_gps
+                    else None
+                ),
+            )
+
+            # conversion back to original color space
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            writer.write(frame)
+
+    writer.close()
+    logger.info('Stop of video output thread')
+
+
+def start_video_input_thread(event: Event) -> None:
+    """Start thread to read frames from VideoGear and add them to Queue.
+
+    Args:
+        event: Event to signal the thread loop to stop.
+    """
+    logger.info('Start of video input thread')
+
+    while not event.is_set():
         frame = stream.read()  # read frames from stream
 
         # check for frame if None-type
         if frame is None:
             break
 
-        # explicit conversion of color space because of
-        # https://github.com/opencv/opencv/issues/18120
-        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_queue.put(frame)
 
-        # add text annotations: timestamp and optionally GPS coordinates
-        img = _add_text_annotations(
-            img,
-            bottom_left=arrow.now().format(arrow.FORMAT_RFC2822),
-            bottom_right=(
-                str(gps_coordinates)
-                if config.settings.enable_gps
-                else None
-            ),
-        )
+    stream.stop()
+    logger.info('Stop of video input thread')
 
-        # conversion back to original color space
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
-        writer.write(img)
+if __name__ == '__main__':
+    if config.settings.enable_gps:
+        gps_coordinates = location.start_gps_thread()
+
+    video_input_thread = Thread(
+        target=start_video_input_thread,
+        args=[stop_event],
+    )
+    video_input_thread.start()
+
+    video_output_thread = Thread(
+        target=start_video_output_thread,
+        args=[stop_event],
+    )
+    video_output_thread.start()
+
+    video_input_thread.join()
+    video_output_thread.join()
