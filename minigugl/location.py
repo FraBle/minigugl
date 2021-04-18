@@ -92,7 +92,10 @@ def _update_gps(gpsd: 'gps.gps', gps_coordinates: GpsCoordinates) -> None:
     while True:  # noqa: WPS457
         gps_data = next(gpsd)
         if gps_data.get('class') == 'TPV':
-            gps_coordinates.update(gps_data.lat, gps_data.lon)
+            gps_coordinates.update(
+                gps_data.get('lat'),
+                gps_data.get('lon'),
+            )
         sleep(config.settings.gps_interval_sec)
 
 
