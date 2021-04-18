@@ -13,25 +13,12 @@ install:
   - head -n -3 pyproject.toml > pyproject.toml.new && cp pyproject.toml.new pyproject.toml
   - poetry install
   - npm install -g snyk
-script: poetry build
-jobs:
-  include:
-    - stage: code quality
-      name: flake8
-      script: poetry run flake8
-    - stage: code quality
-      name: flake8
-      script: poetry run flake8
-    - name: mypy
-      script: poetry run mypy ./minigugl
-    - stage: security scans
-      name: safety
-      script: poetry run safety check
-    - name: bandit
-      script: poetry run bandit -r ./minigugl
-    - name: dodgy
-      script: poetry run dodgy
-    - name: snyk
-      script:
-        - snyk test --all-projects
-        - snyk monitor --all-projects
+script:
+  - poetry run safety check
+  - poetry run bandit -r ./minigugl
+  - poetry run dodgy
+  - poetry run flake8
+  - poetry run mypy ./minigugl
+  - snyk test --all-projects
+after_success:
+  - snyk monitor --all-projects
