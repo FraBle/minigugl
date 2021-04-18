@@ -34,7 +34,6 @@ stream = VideoGear(
 # https://www.ffmpeg.org/ffmpeg-all.html#Codec-Options
 ffmpeg_options = {
     '-c:v': config.settings.video_codec,
-    '-crf': 22,  # constant rate factor, decides quality
     '-map': 0,  # map all streams from the first input to output
     '-segment_time': config.settings.video_segment_length_sec,
     '-g': config.settings.video_framerate,  # group of picture (GOP) size = fps
@@ -46,14 +45,18 @@ ffmpeg_options = {
     # use `-clones` for `-f` parameter since WriteGear internally applies
     # critical '-f rawvideo' parameter to every FFmpeg pipeline
     '-clones': ['-f', 'segment'],  # enable segment muxer
-    '-preset': 'fast',  # preset option (encoding speed to compression ratio)
-    '-tune': 'zerolatency',  # fast encoding and low-latency streaming
     '-input_framerate': config.settings.video_framerate,
     '-r': config.settings.video_framerate,  # output framerate
     '-pix_fmt': 'yuv420p',  # for output to work in QuickTime
     '-reset_timestamps': 1,  # reset timestamps at beginning of each segment
     '-strftime': 1,  # expand the segment filename with localtime
 }
+if config.settings.video_codec == 'libx264':
+    ffmpeg_options.update({
+        '-crf': 22,  # constant rate factor, decides quality
+        '-preset': 'fast',  # preset for encoding speed/compression ratio
+        '-tune': 'zerolatency',  # fast encoding and low-latency streaming
+    })
 Path(config.settings.output_dir).mkdir(parents=True, exist_ok=True)
 writer = WriteGear(
     # Example: video_2021-04-14_20-15-30.mp4
